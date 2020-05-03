@@ -1,0 +1,155 @@
+def import_map(): #function to import map.jpg from google drive
+  import urllib.request
+  from PIL import Image
+  map_url = "https://drive.google.com/uc?id=1_G-K4SZmQC5QHVkrDOQqtpOT0I4SfU0r" #map url
+  mapimg = Image.open(urllib.request.urlopen(map_url)) 
+  #display(mapimg) 
+  return(mapimg)
+
+
+
+def import_back(): #importing GUI background image
+  import urllib.request
+  from PIL import Image
+  back_url = "https://drive.google.com/uc?id=12fXa9KMIUAvGXHBGZrJ3LCCUe3MIm_MH" #url for the background jpg
+  back = Image.open(urllib.request.urlopen(back_url))
+  display(back) #displey the GUI back image
+  #return(back) 
+
+
+
+def import_data(city_names): #Function to import data
+  #import libraraies
+  import pandas as pd
+  import io
+  import requests
+  #live covid stats from UK gvt. 
+  url = "https://coronavirus.data.gov.uk/downloads/csv/coronavirus-cases_latest.csv" #
+  s = requests.get(url).content #get url of csv
+  ds = pd.read_csv(io.StringIO(s.decode('utf-8'))) #read csv as a data frame
+  data = ds.values.tolist() #convert data frame into a list (2d array)
+  #print(data[777][7])
+
+  cities = city_names
+  cases = [0] * len(cities) 
+  c = 0 #index for cities
+  i = 0 #index for the next while loop
+  while(c < len(cities)): #do the linear search for each city
+    while((i <= 7319) and (data[i][0] != cities[c] )): #linear search for the city
+      i = i + 1 #move on to the next row 
+    #print(i) #print y value of city
+    #print(data[i][5]) #print cases in that city
+    cases[c] = data[i][7] #add cases to the array
+    c = c + 1 #move on to the next city
+  
+  #print(cases) #print the number of cases in all the cities
+  return(cases) #NOTE THIS IS AN ARRAY OF STRINGS 
+
+
+
+def show_map(city_names, city_coords):
+  from PIL import Image, ImageDraw #Import and display image
+  image = import_map()
+  draw = ImageDraw.Draw(image)
+
+  def draw_circles(percent_cases, city_x, city_y, city_names): #Procedure to create heatmap on image, based on data
+    centre_x = city_x #The coords of each city are the centre of the circle
+    centre_y = city_y
+
+    radius = 37 / len(city_names) #radius proportional to the number of cities displayed
+
+    top_left = (centre_x - radius, centre_y - radius) #top lef point of the square, in which the circle is drawn in
+    bottom_right = (centre_x + radius, centre_y + radius) #bottom right point...
+    two_points = [top_left, bottom_right] #array of x,y of points of the square
+    colour = round (1000 / (percent_cases ** 2))
+    if(colour > 255):
+      colour = 255
+    #print ("colour:", colour)
+    #print("x", centre_x)
+    #print("y", centre_y)
+    draw.ellipse(two_points, fill = (255, colour, 0,)) #draw the circle
+
+  cases = import_data(city_names) #gets cases in an array AS A STRING
+  for i in range(len(cases)): #converts the strings into ints
+    cases[i] = int(cases[i])
+
+  percent_cases = [0] * len(cases) #array to hold the percentage of cases
+  for i in range(len(cases)):
+    percent_cases[i] = (cases[i] * 100) / sum(cases) #case * 100 / total cases = the percentage of total cases
+
+  #print(cases)
+  #print(percent_cases)
+
+  for i in range(len(city_names)): # draw the circle x times for x number of cities
+    draw_circles(percent_cases[i], city_coords[i][0], city_coords[i][1], city_names) #draw the circles
+
+  display(image)#show the final image
+
+
+
+def any_city():
+  #import libraraies
+  import pandas as pd #import csv file
+  import io #NOTE: can't use import_data() because it's case sensitive
+  import requests
+  #live covid stats from UK gvt. 
+  url = "https://coronavirus.data.gov.uk/downloads/csv/coronavirus-cases_latest.csv" #
+  s = requests.get(url).content #get url of csv
+  ds = pd.read_csv(io.StringIO(s.decode('utf-8'))) #read csv as a data frame
+  data = ds.values.tolist() #convert data frame into a list (2d array)
+
+  city = input("Enter the name of the city you want to look up the cases of: ")
+  city = city.lower().strip() #convert it to lowercase and remove white spaces
+  found = False
+  i = 0
+  while((i < 7319) and (city != data[i][0].lower().strip())):
+    i = i + 1
+  if(data[i][0].lower().strip() != city):
+    print("Please try another city")
+    found = False
+  else:
+    found = True
+  if(found):
+    cases = data[i][7]
+    print("The number of confirmed cases in ", city, " are ", cases)
+
+
+
+def execution():
+  #city names and city coordinates on a 245 * 298 map jpg image
+  city_names = ["Manchester", "Bristol, City of", "London", "Southend-on-Sea", "Birmingham", "Leeds", "Cambridge"] #Mancehster, Bristol, London, Southend
+  city_coords = [[164, 182], [162, 251], [206, 251], [227, 243], [173, 221], [175, 169], [214, 228]] #Manchester, Bristol, London, Southend
+
+  #ai and chatbot urls
+  AI_url = "https://console.cloud.google.com/automl-tables/locations/us-central1/datasets/TBL9124153207075897344;modelId=TBL8085716151687970816;task=basic/predict?project=covidcasemap"
+  chat_url = "https://integrations.eu-gb.assistant.watson.cloud.ibm.com/web/public/1a97dac4-5afe-4c14-9bca-3d6dc322fcbc"
+
+  mode = input().lower().strip() #mode: m = map, a = AI, c = chat bot
+  if(mode == "m"): #if mode is m
+    show_map(city_names, city_coords) #call map procedure
+
+  if(mode == "c"):
+    print("Here's everything you need to know about this pandemic \n", chat_url) #print chatbot url
+
+  if(mode == "a"):
+    print("Click here to use the AI \n", AI_url ) #print ai url
+    print("Click on ONLINE PREDICTION, then enter the city and date and click PREDICT!")
+
+  if(mode == "s"):
+    any_city() 
+
+
+
+#NOTE: google colab doesn't support webbrowser, so the urls had to stay bare
+#there were problems with importing the AI model from google cloud with tensorflow
+#google colab doesn't support any GUI libraries 
+
+
+
+### MAIN PROGRAM ### 
+
+import_back() #procedure to display the GUI background image
+while(True): #then forever
+  execution() #procedure to execute the program
+
+
